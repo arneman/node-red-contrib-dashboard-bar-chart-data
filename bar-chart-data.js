@@ -8,15 +8,18 @@ module.exports = function(RED) {
 			this.x_interval = config.interval || 'hours';
 			this.x_size = config.x_size || 24;
 			this.precision = config.precision || 2;
-			this.is_meter_reading = config.is_meter_reading || false;
+			this.is_meter_reading = (config.is_meter_reading == 'True') || false;
 			this.agg_by = config.agg_by || 'sum';
-
+			
+			var store = this.context();
+			
 			if (msg.payload == 'clear') 
-				clearNode(msg,this);
+				clearNode(msg,this,store);
 			else if (msg.hasOwnProperty("bar_keys")) //restore
-				restoreNode(msg,this);
-			else       
-				barChartData(msg,this);
+				restoreNode(msg,this,store);
+			else      
+				barChartData(msg,this,store);
+			msg.config_is_meter_reading = config.is_meter_reading;
 			this.send(msg);
 		});
 	}
@@ -24,36 +27,36 @@ module.exports = function(RED) {
   RED.nodes.registerType("bar-chart-data", barChartDataNode);
 }
 
-function clearNode(msg, myNode) {
-	flow.set(msg.topic + '_data', {});
-	return {payload: {}, topic: msg.topic};
+function clearNode(msg, myNode, store) {
+	store.set(msg.topic + '_data', {});
+	return {payload: {}, topic: msg.topic, info: 'restored', debug: msg.hasOwnProperty("bar_keys")};
 };
 
 
-function restoreNode(msg, myNode) {
+function restoreNode(msg, myNode, store) {
 	var data = msg.payload[0].data[0];
 	var keys = msg.bar_keys;
 	var restored_data = {};
 	for (var i = 0; i < data.length; i++) {
 			restored_data[keys[i]] = data[i];
 	}
-	flow.set(msg.topic + '_data', restored_data);
+	store.set(msg.topic + '_data', restored_data);
 	return msg; //update dashboard
 };
 
 
-function barChartData(msg,myNode) {
+function barChartData(msg,myNode, store) {
 	var m={};
-	var data = flow.get(msg.topic + '_data')||{};
+	var data = store.get(msg.topic + '_data')||{};
 	var reading = msg.payload;
 	var curDate = new Date();
+	
 
 	//if is_meter_reading == true, use diff between last and current payload value
 	if (myNode.is_meter_reading) {
-		var last = Number(flow.get(msg.topic + '_last')||msg.payload);
+		var last = Number(store.get(msg.topic + '_last')||msg.payload);
 		reading = last - Number(msg.payload);
-		flow.set(msg.topic + '_last', msg.payload);
-		return;
+		store.set(msg.topic + '_last', msg.payload);
 	}
 
 	//remove outdated elements from data
@@ -85,7 +88,7 @@ function barChartData(msg,myNode) {
 	data[curKey] = newVal;
 
 	//store new data in the context store
-	flow.set(msg.topic + '_data', data);
+	store.set(msg.topic + '_data', data);
 
 	//build msg
 	m.labels = buildLabels(curDate);

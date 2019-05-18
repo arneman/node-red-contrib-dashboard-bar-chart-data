@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-dashboard-bar-chart-data",
-  "version": "1.0",
-  "description": "Transforms sensor or meter readings to be displayed in dashboard-chart as bar-chart",
+  "version": "1.0.0",
+  "description": "Transforms sensor measurements or meter readings to be displayed in dashboard-chart as bar-chart",
   "homepage": "https://github.com/arneman/node-red-contrib-dashboard-bar-chart-data",
   "author": "Arne Drees",
   "license": "MIT",

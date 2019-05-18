@@ -1,0 +1,138 @@
+<script type="text/javascript">
+  RED.nodes.registerType('bar-chart-data', {
+    category: 'dashboard',
+    color: '#3FADB5',
+    defaults: {
+      name: { value: 'bar-chart-data' },
+      x_interval: { value: 'hours'},
+			x_size: { value: 24, validate: RED.validators.number()},
+      unit: { value: ''},
+			precision: { value: 2, validate: RED.validators.number()},
+			is_meter_reading: { value: 'False'},
+			agg_by: { value: 'sum'}
+    },
+    credentials: {
+
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'ui_template.png',
+    align: 'right',
+    label: function() {
+      return this.name || 'bar-chart-data';
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="bar-chart-data">
+	
+  <div class="form-row">
+      <label for="node-input-name"><i class="fa fa-tag"></i> Node name</label>
+      <input type="text" id="node-input-name" placeholder="Name">
+  </div>
+   
+  <div class="form-row">
+      <label for="node-input-x_interval"><i class="fa fa-bar-chart"></i> x-interval</label>
+      <select id="node-input-x_interval">
+		  <option value='seconds'>seconds</option>
+      <option value='minutes'>minutes</option>
+      <option value='quarter_hours'>quarter-hours</option>      
+      <option value='hours'>hours</option>
+		  <option value='days'>days</option>
+		  <option value='months'>months</option>		  
+		  <option value='years'>years</option>		
+	  </select>	  
+  </div>  
+  
+  <div class="form-row">
+      <label for="node-input-x_size"><i class="fa fa-bar-chart"></i> x-size</label>
+      <input type="text" id="node-input-x_size" placeholder="24" style="width:50px">
+  </div>
+  
+  
+  <div class="form-row">
+      <label for="node-input-unit"><i class="fa fa-bookmark-o"></i> Unit</label>
+      <input type="text" id="node-input-unit" style="width:80px" />
+  </div>
+  
+  <div class="form-row">
+      <label for="node-input-precision"><i class="fa fa-bar-chart"></i> Precision</label>
+      <input type="text" id="node-input-precision" placeholder="2" style="width:50px">
+  </div>
+  
+  <div class="form-row">
+      <label for="node-input-is_meter_reading</label>"><i class="fa fa-bars"></i> Meter reading</label>
+      <select id="node-input-is_meter_reading">
+		  <option value='True'>True</option>
+		  <option value='False'>False</option>	  	  
+	  </select>	  
+  </div>    
+   
+    <div class="form-row">
+      <label for="node-input-agg_by</label>"><i class="fa fa-bars"></i> Aggregate by</label>
+      <select id="node-input-agg_by">
+		  <option value='sum'>Sum</option>
+		  <option value='min'>Min</option>
+      <option value='max'>Max</option>	  	  
+	  </select>	  
+  </div>   
+
+</script>
+
+<script type="text/x-red" data-help-name="bar-chart-data">
+  <p>Transforms <code>msg.payload</code> to be displayed in the <u>dashboard-chart</u> node as bar-chart. Can handle measurements (e.g. current power consumption) or meter readings (e.g. gas/water/energy meter count). 
+  Calculates the sum, min or max in customizable time range</p>
+
+  <h3> Properties :</h3>
+  <dl class="message-properties">
+    <dt>Name
+      <dd>The name of this node</dd>
+    </dt>
+  
+    <dt>x-interval
+      <dd>1 bar per:
+        <li>second</li> 
+        <li>minute</li>   
+        <li>quarter-hour</li>   
+        <li>hour</li>   
+        <li>day</li>   
+        <li>year</li>   
+      </dd>
+    </dt>
+  
+  <dt>x-size
+    <dd>How many bars should be displayed. Example: x-interval=seconds, x-size=2 : 24 bars each 1 hour, which means that the last 24 hours will be shown</dd>
+  </dt>  
+  
+  <dt>Unit
+    <dd>The unit of the measurement, will be shown in the bar-chart</dd>
+  </dt>  
+
+  <dt>Precision
+    <dd>Number of decimals</dd>
+  </dt>  
+  
+  <dt>Meter reading
+    <dd>Set this to "True" if msg.payload is a meter reading, so that this node will use the difference of the current and last value.
+      <li>True: msg.payload is meter reading, like the total energy, gas or water meter value or operating hours</li>
+      <li>False: msg.payload is a measurement, like power (watt), pressure or temperature</li> 
+    </dd>
+  </dt>  
+  
+  <dt>Aggregate by
+    <dd>
+      <li>sum: sum all values in x-interval</li>
+      <li>min: just display the smallest value in x-interval</li> 
+      <li>max: just display the largest value in x-interval</li> 
+    </dd>
+  </dt>  
+  
+  <h3>Clear and Restore</h3>
+  <dl>
+    <dd> a message with the payload "clear" will reset the data storage (so that the chart will be blank again).<br>
+      If you put the output of this node to the input of this node (via <code>persist node</code>), the data will be restored. 
+      This could be helpful to avoid getting a blank bar-chart after node-red has been restarted (e.g. at reboot).
+    </dd>  
+  </dl>
+  
+</script>
