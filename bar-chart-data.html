@@ -101,11 +101,11 @@
     </dt>
   
   <dt>x-size
-    <dd>How many bars should be displayed. Example: x-interval=seconds, x-size=2 : 24 bars each 1 hour, which means that the last 24 hours will be shown</dd>
+    <dd>How many bars should be displayed. Example: x-interval=hours, x-size=24 : 24 bars, each 1 hour. That means that the last 24 hours will be displayed</dd>
   </dt>  
   
   <dt>Unit
-    <dd>The unit of the measurement, will be shown in the bar-chart</dd>
+    <dd>The unit of the payload, will be displayed in the bar-chart</dd>
   </dt>  
 
   <dt>Precision
@@ -129,9 +129,9 @@
   
   <h3>Clear and Restore</h3>
   <dl>
-    <dd> a message with the payload "clear" will reset the data storage (so that the chart will be blank again).<br>
+    <dd>A message with the payload "clear" will reset the data storage (so that the chart will be blank again).<br>
       If you put the output of this node to the input of this node (via <code>persist node</code>), the data will be restored. 
-      This could be helpful to avoid getting a blank bar-chart after node-red has been restarted (e.g. at reboot).
+      This could be helpful to avoid getting a blank bar-chart after node-red has been restarted (reboot).
     </dd>  
   </dl>
   
