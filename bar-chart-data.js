@@ -5,7 +5,7 @@ module.exports = function(RED) {
 
 		this.on('input', function(msg) {
 			this.unit = config.unit;
-			this.x_interval = config.interval || 'hours';
+			this.x_interval = config.x_interval || 'hours';
 			this.x_size = config.x_size || 24;
 			this.precision = config.precision || 2;
 			this.is_meter_reading = (config.is_meter_reading == 'True') || false;
@@ -13,13 +13,12 @@ module.exports = function(RED) {
 			
 			var store = this.context();
 			
-			if (msg.payload == 'clear') 
+			if (msg.payload === 'clear') 
 				clearNode(msg,this,store);
 			else if (msg.hasOwnProperty("bar_keys")) //restore
 				restoreNode(msg,this,store);
 			else      
 				barChartData(msg,this,store);
-			msg.config_is_meter_reading = config.is_meter_reading;
 			this.send(msg);
 		});
 	}
@@ -29,7 +28,8 @@ module.exports = function(RED) {
 
 function clearNode(msg, myNode, store) {
 	store.set(msg.topic + '_data', {});
-	return {payload: {}, topic: msg.topic, info: 'restored', debug: msg.hasOwnProperty("bar_keys")};
+	msg.payload = {};
+	msg.info = 'cleared';
 };
 
 
@@ -38,25 +38,29 @@ function restoreNode(msg, myNode, store) {
 	var keys = msg.bar_keys;
 	var restored_data = {};
 	for (var i = 0; i < data.length; i++) {
-			restored_data[keys[i]] = data[i];
+		restored_data[keys[i]] = data[i];
 	}
 	store.set(msg.topic + '_data', restored_data);
-	return msg; //update dashboard
+	if (msg.hasOwnProperty("last")) {
+		store.set(msg.topic + '_last', Number(msg.last));
+	}
+	msg.info = 'restored';
 };
 
 
 function barChartData(msg,myNode, store) {
 	var m={};
 	var data = store.get(msg.topic + '_data')||{};
-	var reading = msg.payload;
+	var reading = Number(msg.payload);
 	var curDate = new Date();
 	
 
 	//if is_meter_reading == true, use diff between last and current payload value
 	if (myNode.is_meter_reading) {
-		var last = Number(store.get(msg.topic + '_last')||msg.payload);
-		reading = last - Number(msg.payload);
-		store.set(msg.topic + '_last', msg.payload);
+		var last = store.get(msg.topic + '_last') || reading;
+		store.set(msg.topic + '_last', reading);
+		msg.last = reading;
+		reading = reading - last;
 	}
 
 	//remove outdated elements from data
@@ -97,7 +101,7 @@ function barChartData(msg,myNode, store) {
 	//build factor for the rounding
 	var precision = 1;
 	if (myNode.precision > 0) {
-		precision = 10 * Math.round(myNode.precision);
+		precision = Math.pow(10,Math.round(myNode.precision));
 	}
 	newkeys.forEach(function(key) {
 		if (data.hasOwnProperty(key)) {
