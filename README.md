@@ -48,10 +48,12 @@
     </dd>
   </dt>
   
-  <dt>
-    <dd><img src="https://raw.githubusercontent.com/arneman/node-red-contrib-dashboard-bar-chart-data/master/img/properties.png">
+  <dt>Screenshot
+    <dd>
+      <img src="https://raw.githubusercontent.com/arneman/node-red-contrib-dashboard-bar-chart-data/master/img/properties.png">
     </dd>
   </dt>
+  
   </dl>
 
   <h3>Clear and Restore</h3>
