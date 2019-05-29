@@ -28,6 +28,8 @@ module.exports = function(RED) {
 
 function clearNode(msg, myNode, store) {
 	store.set(msg.topic + '_data', {});
+	store.set(msg.topic + '_data_counter', {});
+	store.set(msg.topic + '_last', {});
 	msg.payload = {};
 	msg.info = 'cleared';
 };
@@ -41,6 +43,7 @@ function restoreNode(msg, myNode, store) {
 		restored_data[keys[i]] = data[i];
 	}
 	store.set(msg.topic + '_data', restored_data);
+	store.set(msg.topic + '_data_counter', msg.data_counter);
 	if (msg.hasOwnProperty("last")) {
 		store.set(msg.topic + '_last', Number(msg.last));
 	}
@@ -51,6 +54,7 @@ function restoreNode(msg, myNode, store) {
 function barChartData(msg,myNode, store) {
 	var m={};
 	var data = store.get(msg.topic + '_data')||{};
+	var dataCounter = store.get(msg.topic + '_data_counter')||{};
 	var reading = Number(msg.payload);
 	var curDate = new Date();
 	
@@ -83,11 +87,25 @@ function barChartData(msg,myNode, store) {
 	if(myNode.agg_by == "sum") {
 		newVal = Math.round(((oldVal||0) + Number(reading))*100000000)/100000000;
 	}
-	if(myNode.agg_by == "min") {
+	else if(myNode.agg_by == "min") {
 		newVal = Math.min(oldVal, reading);
 	}
-	if(myNode.agg_by == "max") {
+	else if(myNode.agg_by == "max") {
 		newVal = Math.max(oldVal, reading);
+	}
+	else if(myNode.agg_by == "avg") {
+		//in this case, we store the number of readings in "data_counter" json and use it to calc the avg
+		//get weight of old value
+		oldDataCounter = 0;
+		if (dataCounter.hasOwnProperty(curKey)) {
+			oldDataCounter = dataCounter[curKey];
+		}
+		//calc avg
+		newVal = ((oldVal*oldDataCounter)+reading)/(oldDataCounter+1);
+		//save to context
+		dataCounter = {}; //we only need to remember the number of readings in the current period
+		dataCounter[curKey] = oldDataCounter+1;
+		store.set(msg.topic + '_data_counter', dataCounter);
 	}
 	data[curKey] = newVal;
 
@@ -115,12 +133,13 @@ function barChartData(msg,myNode, store) {
 	//send list of complete keys, used also as flag to be able to identify bar 
 	//data at the input of this node, to restore the context store (after reboot)
 	//this makes the use of persist nodes possible
-	msg.bar_keys = newkeys; 
+	msg.bar_keys = newkeys; 	
+	msg.data_counter = dataCounter;
 
 	//add min,max,sum
 	msg.data_min = Math.min(...m.data[0]);
 	msg.data_max = Math.max(...m.data[0]);
-	const arrSum = arr => arr.reduce((a,b) => a + b, 0)
+	const arrSum = arr => arr.reduce((a,b) => a + b, 0);
 	msg.data_sum = arrSum(m.data[0]);
 
 	//put all settings into msg (could be used for dynamic chart titles etc.)

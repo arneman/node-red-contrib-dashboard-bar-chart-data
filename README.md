@@ -2,7 +2,7 @@
 
 <h2>Bar-chart-data</h2>
 <p>This node transforms <code>msg.payload</code>, attaches (and stores) past values and build a message that could be linked to the <code>ui_chart</code> node configured as "bar chart". 
-  It can handle measurements (e.g. current power consumption) or meter readings (e.g. gas/water/energy meter count) and calculate the sum, min or max in customizable time range.</p>
+  It can handle measurements (e.g. current power consumption) or meter readings (e.g. gas/water/energy meter count) and calculate the sum, min, max or average in a customizable time range.</p>
 
 <h3> Properties :</h3>
   <dl class="message-properties">
@@ -45,6 +45,7 @@
       <li>sum: sum all values in x-interval</li>
       <li>min: just display the smallest value in x-interval</li> 
       <li>max: just display the largest value in x-interval</li> 
+      <li>avg: average value in x-interval</li>
     </dd>
   </dt>
   
