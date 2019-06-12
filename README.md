@@ -1,6 +1,7 @@
 # node-red-contrib-dashboard-bar-chart-data
 
 <h2>Bar-chart-data</h2>
+<p><a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4GDDLTAZKJH54&source=url"><img src="https://img.shields.io/badge/Donate-PayPal-blue.svg?style=flat-square" alt="Donate via PayPal"></a></p>
 <p>This node transforms <code>msg.payload</code>, attaches (and stores) past values and build a message that could be linked to the <code>ui_chart</code> node configured as "bar chart". 
   It can handle measurements (e.g. current power consumption) or meter readings (e.g. gas/water/energy meter count) and calculate the sum, min, max or average in a customizable time range. 
   Works with multiple topics, too.</p>
