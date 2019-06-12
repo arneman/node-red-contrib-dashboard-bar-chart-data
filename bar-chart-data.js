@@ -27,27 +27,59 @@ module.exports = function(RED) {
 }
 
 function clearNode(msg, myNode, store) {
-	store.set(msg.topic + '_data', {});
-	store.set(msg.topic + '_data_counter', {});
-	store.set(msg.topic + '_last', {});
+	var topics = store.get('topics')||[];
+	//maybe only 1 specific topic should be cleared
+	if (msg.topic != "") {
+		topics = [msg.topic];
+	}
+
+	//for all topics
+	for (var i = 0; i < topics.length; i++) {
+		store.set(topics[i] + '_data', {});
+		store.set(topics[i] + '_data_counter', {});
+		store.set(topics[i] + '_last', {});
+	}
+
+	//clear topic array (or only specific topic)
+	var topicsNew = [];
+	var topicsOld = store.get('topics')||[];
+	if (msg.topic != "" && topicsOld.length > 1) {
+		topicsNew = topicsOld;
+		topicsNew.splice(topicsNew.indexOf(msg.topic),1);
+	}
+	store.set('topics', topicsNew);
+
 	msg.payload = {};
-	msg.info = 'cleared';
+	msg.info = 'data cleared ' + msg.topic;
 };
 
-
 function restoreNode(msg, myNode, store) {
-	var data = msg.payload[0].data[0];
+	var data = msg.payload[0].data;
 	var keys = msg.bar_keys;
-	var restored_data = {};
-	for (var i = 0; i < data.length; i++) {
-		restored_data[keys[i]] = data[i];
+	var topics = msg.topics;
+	
+	//restore with older bar-chart-data version
+	if (topics === undefined) { topics = [msg.topic]; }
+
+	//restore data for all topics
+	for (var i = 0; i < topics.length; i++) {
+		restoredData = {};
+		topicData = data[i];
+		if (topicData === undefined) { topicData = []; };
+		for (var i2 = 0; i < topicData.length; i++) {
+			restoredData[keys[i]] = topicData[i2];
+		}
+		topic = topics[i];
+		store.set(topic + '_data', restoredData);
+		store.set(topic + '_data_counter', msg.data_counter[i]);
+		if (msg.hasOwnProperty("last")) {
+			store.set(topic + '_last', Number(msg.last));
+		}
 	}
-	store.set(msg.topic + '_data', restored_data);
-	store.set(msg.topic + '_data_counter', msg.data_counter);
-	if (msg.hasOwnProperty("last")) {
-		store.set(msg.topic + '_last', Number(msg.last));
-	}
-	msg.info = 'restored';
+	//restore topics array
+	store.set('topics', topics);
+
+	msg.info = 'data restored';
 };
 
 
@@ -57,7 +89,8 @@ function barChartData(msg,myNode, store) {
 	var dataCounter = store.get(msg.topic + '_data_counter')||{};
 	var reading = Number(msg.payload);
 	var curDate = new Date();
-	
+	saveTopic(msg.topic, store); //save topic to store (for cleaning and handling of multiple topics)
+	var topics = store.get('topics');
 
 	//if is_meter_reading == true, use diff between last and current payload value
 	if (myNode.is_meter_reading) {
@@ -114,33 +147,43 @@ function barChartData(msg,myNode, store) {
 
 	//build msg
 	m.labels = buildLabels(curDate);
-	m.series = [myNode.unit];
-	m.data = [[]];
+	m.series = topics;
+	m.data = [];
 	//build factor for the rounding
 	var precision = 1;
 	if (myNode.precision > 0) {
 		precision = Math.pow(10,Math.round(myNode.precision));
 	}
-	newkeys.forEach(function(key) {
-		if (data.hasOwnProperty(key)) {
-			m.data[0].push(Math.round(data[key]*precision)/precision);
-		} else {
-			m.data[0].push(0);
-		}
-	});
+
+	//build data array for each topic
+	var dataAll = []
+	for (var i = 0; i < topics.length; i++) {
+		m.data.push([]); //add new array
+		topic = topics[i];
+		data = store.get(topic + '_data')||[];
+		newkeys.forEach(function(key) {
+			if (data.hasOwnProperty(key)) {
+				m.data[i].push(Math.round(data[key]*precision)/precision);
+			} else {
+				m.data[i].push(0);
+			}
+		});
+		dataAll.push(data);
+	}
 	msg.payload=[m];
 
 	//send list of complete keys, used also as flag to be able to identify bar 
 	//data at the input of this node, to restore the context store (after reboot)
 	//this makes the use of persist nodes possible
 	msg.bar_keys = newkeys; 	
-	msg.data_counter = dataCounter;
+	msg.data_counter = getDataCounters(store);
+	msg.topics = topics;
 
 	//add min,max,sum
-	msg.data_min = Math.min(...m.data[0]);
-	msg.data_max = Math.max(...m.data[0]);
+	msg.data_min = Math.min(...dataAll);
+	msg.data_max = Math.max(...dataAll);
 	const arrSum = arr => arr.reduce((a,b) => a + b, 0);
-	msg.data_sum = arrSum(m.data[0]);
+	msg.data_sum = arrSum(dataAll);
 
 	//put all settings into msg (could be used for dynamic chart titles etc.)
 	msg.settings = {unit: myNode.unit,
@@ -150,7 +193,6 @@ function barChartData(msg,myNode, store) {
 					is_meter_reading: myNode.is_meter_reading,
 					agg_by: myNode.agg_by
 				   };
-				   
 	return msg;
 	
 	function buildDateKey(date) {
@@ -254,6 +296,23 @@ function barChartData(msg,myNode, store) {
 			date = dateMinus(date);
 		}
 		return keys.reverse();
+	};
+
+	function saveTopic(topic, store) {
+		var topics = store.get('topics')||[];
+		if (topics.indexOf(topic) == -1) {
+			topics.push(topic);
+			store.set('topics', topics);
+		}
+	};
+
+	function getDataCounters(store) {
+		var topics = store.get('topics')||[];
+		var dataCounter = [];
+		for (var i = 0; i < topics.length; i++) {
+			dataCounter.push(store.get(topics[i]+'_data_counter')||0);
+		}
+		return dataCounter;
 	};
 };
 
