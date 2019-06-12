@@ -28,6 +28,7 @@ module.exports = function(RED) {
 
 function clearNode(msg, myNode, store) {
 	var topics = store.get('topics')||[];
+	var topicsOld = store.get('topics')||[];
 	//maybe only 1 specific topic should be cleared
 	if (msg.topic != "") {
 		topics = [msg.topic];
@@ -36,16 +37,22 @@ function clearNode(msg, myNode, store) {
 	//for all topics
 	for (var i = 0; i < topics.length; i++) {
 		store.set(topics[i] + '_data', {});
-		store.set(topics[i] + '_data_counter', {});
 		store.set(topics[i] + '_last', {});
 	}
+	
+	//clear data_counter array
+	var dataCounterNew = [];
+	if (msg.topic != "" && topicsOld.length > 1) {
+		dataCounterNew = store.get('data_counter')||[];
+		dataCounterNew.splice(topicsOld.indexOf(msg.topic),1);
+	}
+	store.set('data_counter', dataCounterNew);
 
 	//clear topic array (or only specific topic)
 	var topicsNew = [];
-	var topicsOld = store.get('topics')||[];
 	if (msg.topic != "" && topicsOld.length > 1) {
 		topicsNew = topicsOld;
-		topicsNew.splice(topicsNew.indexOf(msg.topic),1);
+		topicsNew.splice(topicsOld.indexOf(msg.topic),1);
 	}
 	store.set('topics', topicsNew);
 
@@ -66,13 +73,15 @@ function restoreNode(msg, myNode, store) {
 		restoredData = {};
 		topicData = data[i];
 		if (topicData === undefined) { topicData = []; };
-		for (var i2 = 0; i < topicData.length; i++) {
-			restoredData[keys[i]] = topicData[i2];
+		for (var i2 = 0; i2 < topicData.length; i2++) {
+			restoredData[keys[i2]] = topicData[i2];
 		}
 		topic = topics[i];
 		store.set(topic + '_data', restoredData);
 		store.set(topic + '_data_counter', msg.data_counter[i]);
-		if (msg.hasOwnProperty("last")) {
+		if (msg.hasOwnProperty(topic + '_last')) {
+			store.set(topic + '_last', Number(msg[topic + '_last']));
+		} else if (msg.hasOwnProperty('last')) {
 			store.set(topic + '_last', Number(msg.last));
 		}
 	}
@@ -96,7 +105,7 @@ function barChartData(msg,myNode, store) {
 	if (myNode.is_meter_reading) {
 		var last = store.get(msg.topic + '_last') || reading;
 		store.set(msg.topic + '_last', reading);
-		msg.last = reading;
+		msg[msg.topic + '_last'] = reading;
 		reading = reading - last;
 	}
 
