@@ -70,13 +70,13 @@ function restoreNode(msg, myNode, store) {
 
 	//restore data for all topics
 	for (var i = 0; i < topics.length; i++) {
-		restoredData = {};
-		topicData = data[i];
+		var restoredData = {};
+		var topicData = data[i];
 		if (topicData === undefined) { topicData = []; };
 		for (var i2 = 0; i2 < topicData.length; i2++) {
 			restoredData[keys[i2]] = topicData[i2];
 		}
-		topic = topics[i];
+		var topic = topics[i];
 		store.set(topic + '_data', restoredData);
 		store.set(topic + '_data_counter', msg.data_counter[i]);
 		if (msg.hasOwnProperty(topic + '_last')) {
@@ -177,7 +177,7 @@ function barChartData(msg,myNode, store) {
 				m.data[i].push(0);
 			}
 		});
-		dataAll.push(data);
+		dataAll = dataAll.concat(m.data[i]);
 	}
 	msg.payload=[m];
 
@@ -187,6 +187,9 @@ function barChartData(msg,myNode, store) {
 	msg.bar_keys = newkeys; 	
 	msg.data_counter = getDataCounters(store);
 	msg.topics = topics;
+	
+	//put all "_last" values into msg (for restoring)
+	addLastValues(store,msg);
 
 	//add min,max,sum
 	msg.data_min = Math.min(...dataAll);
@@ -323,6 +326,13 @@ function barChartData(msg,myNode, store) {
 		}
 		return dataCounter;
 	};
+	
+	function addLastValues(store, msg) {
+		for (var i = 0; i < topics.length; i++) {
+			msg[topics[i]+'_last'] = store.get(topics[i]+'_last');
+		}
+	};
+	
 };
 
 
