@@ -195,7 +195,7 @@ function barChartData(msg,myNode, store) {
 	msg.data_min = Math.min(...dataAll);
 	msg.data_max = Math.max(...dataAll);
 	const arrSum = arr => arr.reduce((a,b) => a + b, 0);
-	msg.data_sum = arrSum(dataAll);
+	msg.data_sum = Math.round(arrSum(dataAll)*precision)/precision;  
 
 	//put all settings into msg (could be used for dynamic chart titles etc.)
 	msg.settings = {unit: myNode.unit,
