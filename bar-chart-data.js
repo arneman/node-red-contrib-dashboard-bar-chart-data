@@ -260,6 +260,7 @@ function barChartData(msg,myNode, store) {
 			date.setDate(date.getDate()-minus);
 		}
 		else if (myNode.x_interval == "months") {
+			date.setDate(1); //to avoid issues with end of month
 			date.setMonth(date.getMonth()-minus);
 		}
 		else if (myNode.x_interval == "years") {
