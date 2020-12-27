@@ -59,12 +59,23 @@
   
   </dl>
 
-  <h3>Clear and Restore</h3>
+  <h3>Clear</h3>
   <dl>
     <dd>A message with the payload "clear" and the same topic like the sensor will reset the data for this specific sensor only. 
-      A message with the payload "clear" without a topic (empty string) will delete all data, so that the chart will be blank again.<br>
-      If you put the output of this node to the input of this node (via <code>persist node</code>), the data will be restored. 
+      A message with the payload "clear" without a topic (empty string) will delete all data, so that the chart will be blank again.
+    </dd>  
+  </dl>
+ 
+   <h3>Restore</h3>
+  <dl>
+    <dd>If you put the output of this node to the input of this kind of node (via <code>persist node</code>), the data will be restored. 
       This could be helpful to avoid getting a blank bar-chart after node-red has been restarted (reboot).
+    </dd>  
+  </dl>
+  
+  <h3>Logfiles to bar-chart</h3>
+  <dl>
+    <dd>If msg.ts or msg.timestamp is given, this timestamp will be used for the reading instead of the current timestamp. You could use this feature to load (older) logfiles into bar-chart data. Caution: All values older than the given timestamp will be discarded => You have to start with the oldest value and will loose all values that are not inside the log files - except the current values are older than the ones from the logfile.
     </dd>  
   </dl>
  
