@@ -97,7 +97,9 @@ function barChartData(msg,myNode, store) {
 	var data = store.get(msg.topic + '_data')||{};
 	var dataCounter = store.get(msg.topic + '_data_counter')||{};
 	var reading = Number(msg.payload);
-	var curDate = new Date();
+  var ts = msg.ts || msg.timestamp || (+ new Date());
+  if (ts <= 9999999999) { ts *= 1000 }  //sec ts to millis ts, only works until 2286-11-20 :(
+	var curDate = new Date(ts);
 	saveTopic(msg.topic, store); //save topic to store (for cleaning and handling of multiple topics)
 	var topics = store.get('topics');
 
