@@ -97,8 +97,8 @@ function barChartData(msg,myNode, store) {
 	var data = store.get(msg.topic + '_data')||{};
 	var dataCounter = store.get(msg.topic + '_data_counter')||{};
 	var reading = Number(msg.payload);
-  var ts = msg.ts || msg.timestamp || (+ new Date());
-  if (ts <= 9999999999) { ts *= 1000 }  //sec ts to millis ts, only works until 2286-11-20 :(
+	var ts = msg.ts || msg.timestamp || (+ new Date());
+	if (ts <= 9999999999) { ts *= 1000 }  //sec ts to millis ts, only works until 2286-11-20 :(
 	var curDate = new Date(ts);
 	saveTopic(msg.topic, store); //save topic to store (for cleaning and handling of multiple topics)
 	var topics = store.get('topics');
@@ -132,6 +132,7 @@ function barChartData(msg,myNode, store) {
 		newVal = Math.round(((oldVal||0) + Number(reading))*100000000)/100000000;
 	}
 	else if(myNode.agg_by == "min") {
+		if (oldVal === null) { oldVal = reading; } //Math.min() doesnt work with null values (other than max())
 		newVal = Math.min(oldVal, reading);
 	}
 	else if(myNode.agg_by == "max") {
