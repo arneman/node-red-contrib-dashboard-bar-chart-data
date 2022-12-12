@@ -66,7 +66,7 @@
     </dd>  
   </dl>
  
-    <h3>Set (start) meter value</h3>
+  <h3>Set (start) meter value</h3>
   <dl>
     <dd>A message with the payload "set_meter_value 123.45" will set the (start) value for the topic to <code>123.45</code>.
       The calculation of the difference between the new and the previous meter reading value will be skipped. You can use
@@ -74,7 +74,7 @@
     </dd>  
   </dl>
  
-   <h3>Restore</h3>
+  <h3>Restore</h3>
   <dl>
     <dd>If you put the output of this node to the input of this kind of node (via <code>persist node</code>), the data will be restored. 
       This could be helpful to avoid getting a blank bar-chart after node-red has been restarted (reboot).
