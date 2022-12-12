@@ -15,6 +15,8 @@ module.exports = function(RED) {
 			
 			if (msg.payload === 'clear') 
 				clearNode(msg,this,store);
+			else if (msg.payload.toString().split(' ')[0] === 'set_meter_value')
+			    setMeterValue(msg,this,store);
 			else if (msg.hasOwnProperty("bar_keys")) //restore
 				restoreNode(msg,this,store);
 			else      
@@ -24,6 +26,23 @@ module.exports = function(RED) {
 	}
 
   RED.nodes.registerType("bar-chart-data", barChartDataNode);
+}
+
+function setMeterValue(msg, myNode, store) {
+	if(msg.topic == '') {
+		myNode.error('topic is missing, cannot set the new meter value');
+		return;
+	}
+
+	let newValue = Number(msg.payload.split(' ')[1]);
+	if(isNaN(newValue)) {
+		myNode.error('new meter value is missing, use for example "set_meter_value 123.45"');
+		return;
+	}
+	store.set(msg.topic + '_last', newValue);
+
+	msg.payload = {};
+	msg.info = 'new meter value is ' + newValue + ' for ' + msg.topic;
 }
 
 function clearNode(msg, myNode, store) {
