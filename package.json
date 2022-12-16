@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-dashboard-bar-chart-data",
-  "version": "0.9.91",
+  "version": "0.9.92",
   "description": "Transforms sensor measurements or meter readings to be displayed in dashboard-chart as bar-chart",
   "homepage": "https://github.com/arneman/node-red-contrib-dashboard-bar-chart-data",
   "author": "Arne Drees",
@@ -10,9 +10,13 @@
     "url": "https://github.com/arneman/node-red-contrib-dashboard-bar-chart-data.git"
   },
   "node-red": {
+    "version" : ">=1.0.0",
     "nodes": {
       "bar-chart-data": "bar-chart-data.js"
     }
+  },
+  "engines": {
+    "node": ">=10.0.0"
   },
   "keywords": [
     "node-red",
