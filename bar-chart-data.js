@@ -10,7 +10,7 @@ module.exports = function (RED) {
 			this.precision = config.precision || 2;
 			this.is_meter_reading = (config.is_meter_reading == 'True') || false;
 			this.agg_by = config.agg_by || 'sum';
-			this.prevent_negative = config.prevent_negative || true;
+			this.prevent_negative = config.prevent_negative;
 
 			var store = this.context();
 
