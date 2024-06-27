@@ -62,7 +62,7 @@
   </div>
   
   <div class="form-row">
-      <label for="node-input-is_meter_reading</label>"><i class="fa fa-bars"></i> Meter reading</label>
+      <label for="node-input-is_meter_reading"><i class="fa fa-bars"></i> Meter reading</label>
       <select id="node-input-is_meter_reading">
 		  <option value='True'>True</option>
 		  <option value='False'>False</option>	  	  
@@ -70,7 +70,7 @@
   </div>    
    
   <div class="form-row">
-      <label for="node-input-agg_by</label>"><i class="fa fa-bars"></i> Aggregate by</label>
+      <label for="node-input-agg_by"><i class="fa fa-bars"></i> Aggregate by</label>
       <select id="node-input-agg_by">
 		  <option value='sum'>Sum</option>
 		  <option value='min'>Min</option>
@@ -80,8 +80,10 @@
   </div>  
 
   <div class="form-row">
-    <label for="node-input-prevent_negative</label>"><i class="fa fa-bars"></i> Prevent negative</label>
-    <input type="checkbox" id="node-input-prevent_negative">	  
+
+    <label><i class="fa fa-bars"></i> Prevent negative</label>
+    <input type="checkbox" id="node-input-prevent_negative">
+    <label for="node-input-prevent_negative"> Prevent values getting negative if meter reading is smaller than the last one.</label>	  
 </div>  
 
 </script>
