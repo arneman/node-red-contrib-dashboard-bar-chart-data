@@ -133,6 +133,7 @@ function barChartData(msg, myNode, store) {
 		//prevent getting negative - eg. after a meter change
 		if (myNode.prevent_negative && reading < 0) {
 			reading = 0;
+			myNode.warn('new meter value is lower than last one, prevented reading getting negative');
 		}
 	}
 
