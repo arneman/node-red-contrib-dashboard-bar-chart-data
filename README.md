@@ -50,6 +50,14 @@
       <li>avg: average value in x-interval</li>
     </dd>
   </dt>
+
+  <dt>Prevent negative
+    <dd>For meter readings only: If the current meter reading is smaller than the last value, the difference between new and old
+       value will be discarded and the new meter reading will be stored and become the current one.
+       This is helpful if a new meter is installed or if the end of the meter is reached and the it starts from zero again.
+       Without this switch the (negative) difference of new and old value will be calculated and displayed,
+       what is not what you usually want when you want to display meter readings.</dd>
+  </dt> 
   
   <dt>Screenshot
     <dd>

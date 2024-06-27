@@ -4,12 +4,13 @@
     color: '#3FADB5',
     defaults: {
       name: { value: 'bar-chart-data' },
-      x_interval: { value: 'hours'},
-			x_size: { value: 24, validate: RED.validators.number()},
-      unit: { value: ''},
-			precision: { value: 2, validate: RED.validators.number()},
-			is_meter_reading: { value: 'False'},
-			agg_by: { value: 'sum'}
+      x_interval: { value: 'hours' },
+      x_size: { value: 24, validate: RED.validators.number() },
+      unit: { value: '' },
+      precision: { value: 2, validate: RED.validators.number() },
+      is_meter_reading: { value: 'False' },
+      agg_by: { value: 'sum' },
+      prevent_negative: { value: true }
     },
     credentials: {
 
@@ -18,14 +19,14 @@
     outputs: 1,
     icon: 'ui_template.png',
     align: 'right',
-    label: function() {
+    label: function () {
       return this.name || 'bar-chart-data';
     }
   });
 </script>
 
 <script type="text/x-red" data-template-name="bar-chart-data">
-	
+
   <div class="form-row">
       <label for="node-input-name"><i class="fa fa-tag"></i> Node name</label>
       <input type="text" id="node-input-name" placeholder="Name">
@@ -68,7 +69,7 @@
 	  </select>	  
   </div>    
    
-    <div class="form-row">
+  <div class="form-row">
       <label for="node-input-agg_by</label>"><i class="fa fa-bars"></i> Aggregate by</label>
       <select id="node-input-agg_by">
 		  <option value='sum'>Sum</option>
@@ -76,7 +77,12 @@
       <option value='max'>Max</option>
       <option value='avg'>Avg</option>	  	  
 	  </select>	  
-  </div>   
+  </div>  
+
+  <div class="form-row">
+    <label for="node-input-prevent_negative</label>"><i class="fa fa-bars"></i> Prevent negative</label>
+    <input type="checkbox" id="node-input-prevent_negative">	  
+</div>  
 
 </script>
 
@@ -128,6 +134,15 @@
       <li>avg: average value in x-interval</li>
     </dd>
   </dt>  
+
+  <dt>Prevent negative
+    <dd>For meter readings only: If the current meter reading is smaller than the last value, the difference between new and old
+       value will be discarded and the new meter reading will be stored and become the current one.
+       This is helpful if a new meter is installed or if the end of the meter is reached and the it starts from zero again.
+       Without this switch the (negative) difference of new and old value will be calculated and displayed,
+       what is not what you usually want when you want to display meter readings.</dd>
+  </dt> 
+  
   
   <h3>Clear and restore</h3>
   <dl>
@@ -152,7 +167,7 @@
   <h3>Additional output: Sum, Min, Max, Settings</h3>
   <dl>
     <dd>This is included in the output message (and could be used to set chart title etc.):
-      <li>The node settings (unit, x_interval, x_size, precision, is_meter_reading, agg_by) as json in <code>msg.settings</code></li>
+      <li>The node settings (unit, x_interval, x_size, precision, is_meter_reading, agg_by, prevent_negative) as json in <code>msg.settings</code></li>
       <li>The smallest value of all bars (min) in <code>msg.min</code></li>
       <li>The largest value of all bars (max) in <code>msg.max</code></li>
       <li>The sum of all bars in <code>msg.sum</code></li>
@@ -160,4 +175,3 @@
   </dl>
   
 </script>
-
