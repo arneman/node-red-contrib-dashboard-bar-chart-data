@@ -233,7 +233,8 @@ function barChartData(msg, myNode, store) {
 		x_size: myNode.x_size,
 		precision: myNode.precision,
 		is_meter_reading: myNode.is_meter_reading,
-		agg_by: myNode.agg_by
+		agg_by: myNode.agg_by,
+		prevent_negative: myNode.prevent_negative
 	};
 	return msg;
 
