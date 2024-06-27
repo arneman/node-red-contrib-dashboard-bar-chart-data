@@ -10,7 +10,7 @@
     "url": "https://github.com/arneman/node-red-contrib-dashboard-bar-chart-data.git"
   },
   "node-red": {
-    "version" : ">=1.0.0",
+    "version": ">=1.0.0",
     "nodes": {
       "bar-chart-data": "bar-chart-data.js"
     }
