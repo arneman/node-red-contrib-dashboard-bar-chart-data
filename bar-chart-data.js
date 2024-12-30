@@ -18,6 +18,8 @@ module.exports = function (RED) {
 				clearNode(msg, this, store);
 			else if (msg.payload.toString().split(' ')[0] === 'set_meter_value')
 				setMeterValue(msg, this, store);
+			else if (msg.payload === 'overwrite_value')
+				overwriteValue(msg, this, store);
 			else if (msg.hasOwnProperty("bar_keys")) //restore
 				restoreNode(msg, this, store);
 			else
@@ -44,6 +46,58 @@ function setMeterValue(msg, myNode, store) {
 
 	msg.payload = {};
 	msg.info = 'new meter value is ' + newValue + ' for ' + msg.topic;
+}
+
+function overwriteValue(msg, myNode, store) {
+	//message format:
+	//	new_value: value that should be set
+	//	topic: topic
+	//	index: index of data array, support -1 etc.
+	//	optional; new_meter_value: for meter readings, value to replace "[TOPIC]_last" value
+
+	let data = store.get(msg.topic + '_data');
+	if (!data) {
+		myNode.error('no data found (for this topic)');
+		return;
+	}
+	let keys = Object.keys(data).sort(); //assuming that the index refers to the displayd bar chart (data should be sorted anyway)
+
+	let newValue = Number(msg.new_value);
+	if (isNaN(newValue)) {
+		myNode.error('new value is missing or not a number, set msg.new_value properly"');
+		return;
+	}
+
+	let index = Number(msg.index);
+	if (isNaN(index)) {
+		myNode.error('index is missing or not a number, set msg.index properly"');
+		return;
+	}
+
+	if (index > keys.length - 1 || -1 * index > keys.length) {
+		myNode.error('index is greater than data array length => value to replace does not exist"');
+		return;
+	}
+
+	//modify data
+	if (index < 0) {
+		index = keys.length + index;
+	}
+	let key = keys[index]
+	data[key] = newValue;
+
+	//store new data in the context store
+	store.set(msg.topic + '_data', data);
+
+	//replace last meter value (if relevant and given)
+	let newMeterValue = Number(msg.new_meter_value);
+	if (myNode.is_meter_reading &&
+		!isNaN(newMeterValue)) {
+		store.set(msg.topic + '_last', newMeterValue);
+	}
+
+	//send msg with new data
+	sendMsg(msg, myNode, store);
 }
 
 function clearNode(msg, myNode, store) {
@@ -93,7 +147,7 @@ function restoreNode(msg, myNode, store) {
 		let restoredData = {};
 		let topicData = data[i];
 		if (topicData === undefined) { topicData = []; };
-		for (var i2 = 0; i2 < topicData.length; i2++) {
+		for (let i2 = 0; i2 < topicData.length; i2++) {
 			restoredData[keys[i2]] = topicData[i2];
 		}
 		let topic = topics[i];
@@ -111,17 +165,12 @@ function restoreNode(msg, myNode, store) {
 	msg.info = 'data restored';
 };
 
-
 function barChartData(msg, myNode, store) {
-	let m = {};
 	let data = store.get(msg.topic + '_data') || {};
 	let dataCounter = store.get(msg.topic + '_data_counter') || {};
 	let reading = Number(msg.payload);
-	let ts = msg.ts || msg.timestamp || (+ new Date());
-	if (ts <= 9999999999) { ts *= 1000 }  //sec ts to millis ts, only works until 2286-11-20 :(
-	let curDate = new Date(ts);
+	let curDate = getCurDate(msg);
 	saveTopic(msg.topic, store); //save topic to store (for cleaning and handling of multiple topics)
-	let topics = store.get('topics');
 
 	//if is_meter_reading == true, use diff between last and current payload value
 	if (myNode.is_meter_reading) {
@@ -138,7 +187,7 @@ function barChartData(msg, myNode, store) {
 	}
 
 	//remove outdated elements from data
-	let newkeys = buildKeys(curDate);
+	let newkeys = buildKeys(curDate, myNode.x_size, myNode.x_interval);
 	for (let oldkey in data) {
 		if (!newkeys.includes(oldkey)) {
 			delete data[oldkey];
@@ -183,9 +232,22 @@ function barChartData(msg, myNode, store) {
 	//store new data in the context store
 	store.set(msg.topic + '_data', data);
 
+	sendMsg(msg, myNode, store);
+};
+
+//--------------------------
+//     helper functions
+//--------------------------
+
+function sendMsg(msg, myNode, store) {
+	let m = {};
+	let topics = store.get('topics');
+	let curDate = getCurDate(msg);
+	let newkeys = buildKeys(curDate, myNode.x_size, myNode.x_interval);
+
 	//build msg
-	m.labels = buildLabels(curDate);
-	m.series = topics;
+	m.labels = buildLabels(curDate, myNode.x_size, myNode.x_interval);
+	m.series = topics
 	m.data = [];
 	//build factor for the rounding
 	let precision = 1;
@@ -197,8 +259,8 @@ function barChartData(msg, myNode, store) {
 	let dataAll = []
 	for (let i = 0; i < topics.length; i++) {
 		m.data.push([]); //add new array
-		topic = topics[i];
-		data = store.get(topic + '_data') || [];
+		let topic = topics[i];
+		let data = store.get(topic + '_data') || [];
 		newkeys.forEach(function (key) {
 			if (data.hasOwnProperty(key)) {
 				m.data[i].push(Math.round(data[key] * precision) / precision);
@@ -236,7 +298,85 @@ function barChartData(msg, myNode, store) {
 		agg_by: myNode.agg_by,
 		prevent_negative: myNode.prevent_negative
 	};
-	return msg;
+};
+
+function getCurDate(msg) {
+	let ts = msg.ts || msg.timestamp || (+ new Date());
+	if (ts <= 9999999999) { ts *= 1000; }  //sec ts to millis ts, only works until 2286-11-20 :(
+	return new Date(ts);
+};
+
+function getQuarterHour(date) {
+	return Math.floor((date.getMinutes()) / 15) + 1;
+};
+
+function dateMinus(date_in, x_interval, minus = 1) {
+	let date = new Date(date_in);
+	if (x_interval == "seconds") {
+		date.setSeconds(date.getSeconds() - minus);
+	}
+	else if (x_interval == "minutes") {
+		date.setMinutes(date.getMinutes() - minus);
+	}
+	else if (x_interval == "quarter_hours") {
+		date.setMinutes(date.getMinutes() - (minus * 15));
+	}
+	else if (x_interval == "hours") {
+		date.setHours(date.getHours() - minus);
+	}
+	else if (x_interval == "days") {
+		date.setDate(date.getDate() - minus);
+	}
+	else if (x_interval == "months") {
+		date.setDate(1); //to avoid issues with end of month
+		date.setMonth(date.getMonth() - minus);
+	}
+	else if (x_interval == "years") {
+		date.setFullYear(date.getFullYear() - minus);
+	}
+	return date;
+};
+
+function buildLabels(date, x_size, x_interval) {
+	let labels = [];
+	for (let i = 0; i < x_size; i++) {
+		let label;
+		if (x_interval == "seconds") {
+			label = ("0" + date.getHours()).slice(-2) + ":" + ("0" + date.getMinutes()).slice(-2) + ":" + ("0" + date.getSeconds()).slice(-2);
+		}
+		else if (x_interval == "minutes") {
+			label = ("0" + date.getHours()).slice(-2) + ":" + ("0" + date.getMinutes()).slice(-2);
+		}
+		else if (x_interval == "quarter_hours") {
+			label_date = new Date(date);
+			label_date.setMinutes(getQuarterHour(date) * 15);
+			label = ("0" + label_date.getHours()).slice(-2) + ":" + ("0" + label_date.getMinutes()).slice(-2);
+		}
+		else if (x_interval == "hours") {
+			label = ("0" + date.getHours()).slice(-2);
+		}
+		else if (x_interval == "days") {
+			label = ("0" + (date.getMonth() + 1)).slice(-2) + "-" + ("0" + date.getDate()).slice(-2);
+		}
+		else if (x_interval == "months") {
+			label = "" + date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2);
+		}
+		else if (x_interval == "years") {
+			label = "" + date.getFullYear();
+		}
+		labels.push(label);
+		date = dateMinus(date, x_interval);
+	}
+	return labels.reverse();
+};
+
+function buildKeys(date, x_size, x_interval) {
+	let keys = [];
+	for (let i = 0; i < x_size; i++) {
+		keys.push(buildDateKey(date));
+		date = dateMinus(date, x_interval);
+	}
+	return keys.reverse();
 
 	function buildDateKey(date) {
 		let fullKey = ("" + date.getFullYear()) +
@@ -246,126 +386,57 @@ function barChartData(msg, myNode, store) {
 			("0" + date.getMinutes()).slice(-2) +
 			("0" + date.getSeconds()).slice(-2);
 
-		if (myNode.x_interval == "seconds") {
+		if (x_interval == "seconds") {
 			return fullKey;
 		}
-		else if (myNode.x_interval == "minutes") {
+		else if (x_interval == "minutes") {
 			return fullKey.slice(0, -2);
 		}
-		else if (myNode.x_interval == "quarter_hours") {
+		else if (x_interval == "quarter_hours") {
 			return fullKey.slice(0, -4) + "_" + getQuarterHour(date);
 		}
-		else if (myNode.x_interval == "hours") {
+		else if (x_interval == "hours") {
 			return fullKey.slice(0, -4);
 		}
-		else if (myNode.x_interval == "days") {
+		else if (x_interval == "days") {
 			return fullKey.slice(0, -6);
 		}
-		else if (myNode.x_interval == "months") {
+		else if (x_interval == "months") {
 			return fullKey.slice(0, -8);
 		}
-		else if (myNode.x_interval == "years") {
+		else if (x_interval == "years") {
 			return fullKey.slice(0, -10);
 		}
 	};
-
-	function getQuarterHour(date) {
-		return Math.floor((date.getMinutes()) / 15) + 1;
-	};
-
-	function dateMinus(date_in, minus = 1) {
-		let date = new Date(date_in);
-		if (myNode.x_interval == "seconds") {
-			date.setSeconds(date.getSeconds() - minus);
-		}
-		else if (myNode.x_interval == "minutes") {
-			date.setMinutes(date.getMinutes() - minus);
-		}
-		else if (myNode.x_interval == "quarter_hours") {
-			date.setMinutes(date.getMinutes() - (minus * 15));
-		}
-		else if (myNode.x_interval == "hours") {
-			date.setHours(date.getHours() - minus);
-		}
-		else if (myNode.x_interval == "days") {
-			date.setDate(date.getDate() - minus);
-		}
-		else if (myNode.x_interval == "months") {
-			date.setDate(1); //to avoid issues with end of month
-			date.setMonth(date.getMonth() - minus);
-		}
-		else if (myNode.x_interval == "years") {
-			date.setFullYear(date.getFullYear() - minus);
-		}
-		return date;
-	};
-
-	function buildLabels(date) {
-		let labels = [];
-		for (let i = 0; i < myNode.x_size; i++) {
-			let label;
-			if (myNode.x_interval == "seconds") {
-				label = ("0" + date.getHours()).slice(-2) + ":" + ("0" + date.getMinutes()).slice(-2) + ":" + ("0" + date.getSeconds()).slice(-2);
-			}
-			else if (myNode.x_interval == "minutes") {
-				label = ("0" + date.getHours()).slice(-2) + ":" + ("0" + date.getMinutes()).slice(-2);
-			}
-			else if (myNode.x_interval == "quarter_hours") {
-				label_date = new Date(date);
-				label_date.setMinutes(getQuarterHour(date) * 15);
-				label = ("0" + label_date.getHours()).slice(-2) + ":" + ("0" + label_date.getMinutes()).slice(-2);
-			}
-			else if (myNode.x_interval == "hours") {
-				label = ("0" + date.getHours()).slice(-2);
-			}
-			else if (myNode.x_interval == "days") {
-				label = ("0" + (date.getMonth() + 1)).slice(-2) + "-" + ("0" + date.getDate()).slice(-2);
-			}
-			else if (myNode.x_interval == "months") {
-				label = "" + date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2);
-			}
-			else if (myNode.x_interval == "years") {
-				label = "" + date.getFullYear();
-			}
-			labels.push(label);
-			date = dateMinus(date);
-		}
-		return labels.reverse();
-	};
-
-	function buildKeys(date) {
-		let keys = [];
-		for (let i = 0; i < myNode.x_size; i++) {
-			keys.push(buildDateKey(date));
-			date = dateMinus(date);
-		}
-		return keys.reverse();
-	};
-
-	function saveTopic(topic, store) {
-		let topics = store.get('topics') || [];
-		if (topics.indexOf(topic) == -1) {
-			topics.push(topic);
-			store.set('topics', topics);
-		}
-	};
-
-	function getDataCounters(store) {
-		let topics = store.get('topics') || [];
-		let dataCounter = [];
-		for (let i = 0; i < topics.length; i++) {
-			dataCounter.push(store.get(topics[i] + '_data_counter') || 0);
-		}
-		return dataCounter;
-	};
-
-	function addLastValues(store, msg) {
-		for (let i = 0; i < topics.length; i++) {
-			msg[topics[i] + '_last'] = store.get(topics[i] + '_last');
-		}
-	};
-
 };
+
+function saveTopic(topic, store) {
+	let topics = store.get('topics') || [];
+	if (topics.indexOf(topic) == -1) {
+		topics.push(topic);
+		store.set('topics', topics);
+	}
+};
+
+function getDataCounters(store) {
+	let topics = store.get('topics') || [];
+	let dataCounter = [];
+	for (let i = 0; i < topics.length; i++) {
+		dataCounter.push(store.get(topics[i] + '_data_counter') || 0);
+	}
+	return dataCounter;
+};
+
+function addLastValues(store, msg) {
+	let topics = store.get('topics') || [];
+	for (let i = 0; i < topics.length; i++) {
+		msg[topics[i] + '_last'] = store.get(topics[i] + '_last');
+	}
+};
+
+
+
+
 
 
 
